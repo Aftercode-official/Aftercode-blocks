@@ -329,9 +329,9 @@ Blockly.HorizontalFlyout.prototype.layout_ = function(contents, gaps) {
 
 if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
   var rowCount = 3;
-  var colGap = 8;    // khoảng cách cột, giảm mạnh cho gọn
-  var rowGap = 0;     // bỏ khoảng đệm dư giữa các hàng
-  var topPad = 4;     // padding trên/dưới khay, nhỏ gọn
+  var colGap = 8;    
+  var rowGap = 0;     
+  var topPad = 4;     
   var columnWidth = 0;
   var rowHeights = [0, 0, 0];
 
