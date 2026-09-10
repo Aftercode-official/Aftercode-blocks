@@ -328,12 +328,12 @@ Blockly.HorizontalFlyout.prototype.layout_ = function(contents, gaps) {
   }
 
 if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
-  var rowCount = 3;
+  var rowCount = 2;
   var colGap = 8;    
-  var rowGap = 0;     
+  var rowGap = 3;     
   var topPad = 4;     
   var columnWidth = 0;
-  var rowHeights = [0, 0, 0];
+  var rowHeights = [0, 0];
 
   for (var buttonIndex = 0; buttonIndex < contents.length; buttonIndex++) {
     if (contents[buttonIndex].type == 'button') {
@@ -503,7 +503,7 @@ Blockly.HorizontalFlyout.prototype.getClientRect = function() {
  * @param {!Array<!Blockly.Block>} blocks The blocks to reflow.
  */
 Blockly.HorizontalFlyout.prototype.reflowInternal_ = function(blocks) {
-  this.workspace_.scale = this.targetWorkspace_.scale *0.80;
+  this.workspace_.scale = this.targetWorkspace_.scale *1;
   var flyoutHeight = 0;
   for (var i = 0, block; block = blocks[i]; i++) {
     flyoutHeight = Math.max(flyoutHeight, block.getHeightWidth().height);
