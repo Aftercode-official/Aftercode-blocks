@@ -45,7 +45,14 @@ Blockly.Options = function(options) {
     var hasComments = false;
     var hasDisable = false;
     var hasSounds = false;
+    var horizontalLayout = options['horizontalLayout']; // true (Ngang) hoặc false (Dọc)
+    var toolboxAtStart = options['toolboxPosition'] !== 'end'; // 'start' (Trái/Trên) hoặc 'end' (Phải/Dưới)
   } else {
+    if (horizontalLayout) {
+      var toolboxPosition = toolboxAtStart ? Blockly.TOOLBOX_AT_TOP : Blockly.TOOLBOX_AT_BOTTOM;
+    } else {
+      var toolboxPosition = (toolboxAtStart == rtl) ? Blockly.TOOLBOX_AT_RIGHT : Blockly.TOOLBOX_AT_LEFT;
+    }
     if (!options['toolbox'] && Blockly.Blocks.defaultToolbox) {
       var oParser = new DOMParser();
       var dom = oParser.parseFromString(Blockly.Blocks.defaultToolbox, 'text/xml');
