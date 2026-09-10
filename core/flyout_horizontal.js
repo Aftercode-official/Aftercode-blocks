@@ -97,7 +97,7 @@ Blockly.HorizontalFlyout.prototype.getMetrics_ = function() {
   if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
     viewHeight += this.MARGIN;
   }
-  var viewWidth = this.width_ - 2 * this.SCROLLBAR_PADDING;
+  var viewWidth = this.width_ - 7 * this.SCROLLBAR_PADDING;
 
   var metrics = {
     viewHeight: viewHeight,
@@ -169,7 +169,9 @@ Blockly.HorizontalFlyout.prototype.position = function() {
   }
 
   var y = targetWorkspaceMetrics.absoluteTop;
-  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_BOTTOM) {
+  // Keep the category bar at the top while docking its flyout at the bottom.
+  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_BOTTOM ||
+      this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
     y += targetWorkspaceMetrics.viewHeight;
     y -= this.height_;
   }
@@ -208,7 +210,7 @@ Blockly.HorizontalFlyout.prototype.position = function() {
  * @private
  */
 Blockly.HorizontalFlyout.prototype.setBackgroundPath_ = function(width, height) {
-  var atTop = this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP;
+  var atTop = false;
   // Start at top left.
   var path = ['M 0,' + (atTop ? 0 : this.CORNER_RADIUS)];
 
@@ -325,6 +327,76 @@ Blockly.HorizontalFlyout.prototype.layout_ = function(contents, gaps) {
     contents = contents.reverse();
   }
 
+if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
+  var rowCount = 3;
+  var colGap = 8;    // khoảng cách cột, giảm mạnh cho gọn
+  var rowGap = 0;     // bỏ khoảng đệm dư giữa các hàng
+  var topPad = 4;     // padding trên/dưới khay, nhỏ gọn
+  var columnWidth = 0;
+  var rowHeights = [0, 0, 0];
+
+  for (var buttonIndex = 0; buttonIndex < contents.length; buttonIndex++) {
+    if (contents[buttonIndex].type == 'button') {
+      contents[buttonIndex].button.createDom();
+    }
+  }
+
+  for (var gridSizeIndex = 0; gridSizeIndex < contents.length; gridSizeIndex++) {
+    var gridItem = contents[gridSizeIndex];
+    var gridSize = gridItem.type == 'block' ? gridItem.block.getHeightWidth() :
+      { width: gridItem.button.width, height: gridItem.button.height };
+    columnWidth = Math.max(columnWidth, gridSize.width);
+    rowHeights[gridSizeIndex % rowCount] = Math.max(
+        rowHeights[gridSizeIndex % rowCount], gridSize.height);
+  }
+
+  columnWidth += colGap;
+  for (var rowHeightIndex = 0; rowHeightIndex < rowHeights.length; rowHeightIndex++) {
+    rowHeights[rowHeightIndex] += rowGap;
+  }
+
+  this.gridTopHeight_ = topPad + rowHeights[0] + rowHeights[1] + rowHeights[2];
+
+  for (var gridIndex = 0; gridIndex < contents.length; gridIndex++) {
+    var gridItem = contents[gridIndex];
+    var gridColumn = Math.floor(gridIndex / rowCount);
+    var gridRow = gridIndex % rowCount;
+    var gridX = topPad + gridColumn * columnWidth;
+    var gridY = topPad;
+    for (var previousRow = 0; previousRow < gridRow; previousRow++) {
+      gridY += rowHeights[previousRow];
+    }
+
+    if (gridItem.type == 'block') {
+      var gridBlock = gridItem.block;
+      var gridBlockSize = gridBlock.getHeightWidth();
+      var gridRoot = gridBlock.getSvgRoot();
+      var gridChildren = gridBlock.getDescendants(false);
+      for (var gridChildIndex = 0; gridChildIndex < gridChildren.length; gridChildIndex++) {
+        gridChildren[gridChildIndex].isInFlyout = true;
+      }
+      gridBlock.moveBy(this.RTL ? gridX + gridBlockSize.width : gridX, gridY);
+
+      var gridRect = Blockly.utils.createSvgElement('rect', { 'fill-opacity': 0 }, null);
+      gridRect.tooltip = gridBlock;
+      Blockly.Tooltip.bindMouseEvents(gridRect);
+      this.workspace_.getCanvas().insertBefore(gridRect, gridRoot);
+      gridBlock.flyoutRect_ = gridRect;
+      this.backgroundButtons_[gridIndex] = gridRect;
+      this.addBlockListeners_(gridRoot, gridBlock, gridRect);
+    } else if (gridItem.type == 'button') {
+      var gridButton = gridItem.button;
+      var gridButtonSvg = gridButton.svgGroup_;
+      gridButton.moveTo(gridX, gridY);
+      gridButton.show();
+      this.listeners_.push(Blockly.bindEventWithChecks_(gridButtonSvg, 'mousedown',
+          this, this.onMouseDown_));
+      this.buttons_.push(gridButton);
+    }
+  }
+  return;
+}
+
   for (var i = 0, item; item = contents[i]; i++) {
     if (item.type == 'block') {
       var block = item.block;
@@ -391,13 +463,9 @@ Blockly.HorizontalFlyout.prototype.isDragTowardWorkspace = function(currentDragD
 
   var draggingTowardWorkspace = false;
   var range = this.dragAngleRange_;
-  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
-    // Horizontal at top.
-    if (dragDirection < 90 + range && dragDirection > 90 - range) {
-      draggingTowardWorkspace = true;
-    }
-  } else {
-    // Horizontal at bottom.
+  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP ||
+      this.toolboxPosition_ == Blockly.TOOLBOX_AT_BOTTOM) {
+    // The flyout is docked at the bottom for both horizontal positions.
     if (dragDirection > -90 - range && dragDirection < -90 + range) {
       draggingTowardWorkspace = true;
     }
@@ -422,10 +490,8 @@ Blockly.HorizontalFlyout.prototype.getClientRect = function() {
   var y = flyoutRect.top;
   var height = flyoutRect.height;
 
-  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
-    return new goog.math.Rect(-BIG_NUM, y - BIG_NUM, BIG_NUM * 2,
-        BIG_NUM + height);
-  } else if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_BOTTOM) {
+  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP ||
+      this.toolboxPosition_ == Blockly.TOOLBOX_AT_BOTTOM) {
     return new goog.math.Rect(-BIG_NUM, y, BIG_NUM * 2,
         BIG_NUM + height);
   }
@@ -437,12 +503,15 @@ Blockly.HorizontalFlyout.prototype.getClientRect = function() {
  * @param {!Array<!Blockly.Block>} blocks The blocks to reflow.
  */
 Blockly.HorizontalFlyout.prototype.reflowInternal_ = function(blocks) {
-  this.workspace_.scale = this.targetWorkspace_.scale;
+  this.workspace_.scale = this.targetWorkspace_.scale *0.80;
   var flyoutHeight = 0;
   for (var i = 0, block; block = blocks[i]; i++) {
     flyoutHeight = Math.max(flyoutHeight, block.getHeightWidth().height);
   }
-  flyoutHeight += this.MARGIN * 1.5;
+  if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP && this.gridTopHeight_) {
+    flyoutHeight = this.gridTopHeight_;
+  }
+  flyoutHeight += this.MARGIN * 0;
   flyoutHeight *= this.workspace_.scale;
   flyoutHeight += Blockly.Scrollbar.scrollbarThickness;
   if (this.height_ != flyoutHeight) {
