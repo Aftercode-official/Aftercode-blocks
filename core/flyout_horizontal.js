@@ -355,7 +355,10 @@ if (this.toolboxPosition_ == Blockly.TOOLBOX_AT_TOP) {
     rowHeights[rowHeightIndex] += rowGap;
   }
 
-  this.gridTopHeight_ = topPad + rowHeights[0] + rowHeights[1] + rowHeights[2];
+   this.gridTopHeight_ = topPad;
+    for (var rh = 0; rh < rowHeights.length; rh++) {
+      this.gridTopHeight_ += rowHeights[rh];
+    }
 
   for (var gridIndex = 0; gridIndex < contents.length; gridIndex++) {
     var gridItem = contents[gridIndex];
