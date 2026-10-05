@@ -27,6 +27,34 @@ goog.require("Blockly.Colours");
 goog.require("Blockly.constants");
 goog.require("Blockly.ScratchBlocks.Extensions");
 
+const getWorkspaceVM = function (workspace) {
+  while (workspace) {
+    if (workspace.options && workspace.options.vm) {
+      return workspace.options.vm;
+    }
+    workspace = workspace.options && workspace.options.parentWorkspace;
+  }
+  return null;
+};
+
+const getAssetMenuOptions = function (field) {
+  const block = field.sourceBlock_;
+  const workspace = block && block.workspace;
+  const vm = getWorkspaceVM(workspace);
+  const target = vm && vm.editingTarget;
+  const targetId = target && target.sprite && target.sprite.clones.length ?
+    target.sprite.clones[0].id : target && target.id;
+  const assets = vm && vm.runtime.extensionStorage.assets || [];
+  const options = assets
+    .filter(function (asset) {
+      return !asset.scopeId || asset.scopeId === targetId;
+    })
+    .map(function (asset) {
+      return [asset.name, asset.name];
+    });
+  return options.length ? options : [["", ""]];
+};
+
 Blockly.Blocks["assets_menu"] = {
   /**
    * Assets drop-down menu.
@@ -39,11 +67,9 @@ Blockly.Blocks["assets_menu"] = {
         {
           type: "field_dropdown",
           name: "ASSET_MENU",
-          options: [
-            ["horse.jpeg", "horse.jpeg"],
-            ["jeffery's files.pdf", "jeffery's files.pdf"],
-            ["monkey.glb", "monkey.glb"],
-          ],
+          options: function () {
+            return getAssetMenuOptions(this);
+          },
         },
       ],
       category: Blockly.Categories.assets,
